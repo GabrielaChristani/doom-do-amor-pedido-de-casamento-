@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doom 3D do Amor /title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background: linear-gradient(135deg, #4b0082, #8b00ff, #9932cc);
+            overflow: hidden;
+            cursor: none;
+            image-rendering: pixelated;
+        }
+        
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .viewport {
+            width: 100%;
+            height: 70vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            image-rendering: pixelated;
+        }
+        
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: #ff0080;
+            box-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 0 0 10px #ff0080;
+            border-radius: 2px;
+        }
+        
+        .crosshair::before {
+            width: 24px;
+            height: 4px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .crosshair::after {
+            width: 4px;
+            height: 24px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .crosshair-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 6px;
+            background: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ff0080;
+        }
+        
+        .status-bar {
+            width: 100%;
+            height: 30vh;
+            background: linear-gradient(180deg, #4b0082 0%, #663399 50%, #2d1b3d 100%);
+            border-top: 4px solid #dda0dd;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 40px;
+            position: relative;
+        }
+        
+        .player-face {
+            width: 100px;
+            height: 100px;
+            background: #ffdbac;
+            border: 4px solid #dda0dd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            box-shadow: inset 2px 2px 0px #fff, inset -2px -2px 0px #4b0082;
+        }
+        
+        .health-display {
+            color: #dda0dd;
+            font-size: 18px;
+            text-shadow: 2px 2px 0px #000;
+            text-align: center;
+        }
+        
+        .hearts-display {
+            color: #9932cc;
+            font-size: 18px;
+            text-shadow: 2px 2px 0px #000;
+            text-align: center;
+        }
+        
+        .weapon-sprite {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 150px;
+            background: linear-gradient(45deg, #8b00ff 0%, #9932cc 30%, #4b0082 100%);
+            clip-path: polygon(35% 100%, 65% 100%, 60% 20%, 40% 20%);
+            border: 3px solid #dda0dd;
+            z-index: 50;
+        }
+        
+        .weapon-sprite::before {
+            content: '💘';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+        }
+        
+        .controls-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(75,0,130,0.9);
+            color: #dda0dd;
+            padding: 15px;
+            border: 2px solid #dda0dd;
+            font-size: 10px;
+            z-index: 200;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(139, 0, 255, 0.5);
+        }
+        
+        .proposal-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .proposal-content {
+            background: linear-gradient(45deg, #ff1493, #ff69b4);
+            padding: 50px;
+            text-align: center;
+            color: white;
+            max-width: 700px;
+            border: 8px solid #fff;
+            box-shadow: 0 0 100px #ff69b4;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+        
+        .proposal-title {
+            font-size: 3em;
+            margin-bottom: 30px;
+        }
+        
+        .ring-emoji {
+            font-size: 5em;
+            margin: 30px 0;
+            animation: ring-spin 3s linear infinite;
+        }
+        
+        @keyframes ring-spin {
+            from { transform: rotateY(0deg); }
+            to { transform: rotateY(360deg); }
+        }
+        
+        .doom-button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            margin: 0 15px;
+            transition: all 0.2s;
+        }
+        
+        .btn-yes {
+            background: linear-gradient(45deg, #00ff00, #32ff32);
+            color: white;
+            box-shadow: 0 6px 0px #00aa00;
+        }
+        
+        .btn-yes:hover {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0px #00aa00;
+        }
+        
+        .btn-no {
+            background: linear-gradient(45deg, #ff4444, #ff6666);
+            color: white;
+            box-shadow: 0 6px 0px #aa0000;
+        }
+        
+        .btn-no:hover {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0px #aa0000;
+        }
+        
+        .victory-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            padding: 50px;
+            text-align: center;
+            color: #8b0000;
+            font-size: 2.5em;
+            display: none;
+            z-index: 1500;
+            border: 8px solid #fff;
+            box-shadow: 0 0 150px #ffd700;
+            animation: victory-pulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes victory-pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+        
+        .start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #4b0082, #8b00ff, #9932cc, #dda0dd);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            color: white;
+            text-align: center;
+            animation: purple-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes purple-glow {
+            0%, 100% { box-shadow: inset 0 0 100px rgba(139, 0, 255, 0.3); }
+            50% { box-shadow: inset 0 0 200px rgba(139, 0, 255, 0.6); }
+        }
+        
+        .game-title {
+            font-size: 4em;
+            margin-bottom: 30px;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
+            animation: title-pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes title-pulse {
+            0%, 100% { transform: scale(1); color: #ffffff; }
+            50% { transform: scale(1.05); color: #dda0dd; }
+        }
+        
+        .game-subtitle {
+            font-size: 1.5em;
+            margin-bottom: 40px;
+            color: #dda0dd;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+        }
+        
+        .instructions {
+            background: rgba(0,0,0,0.7);
+            padding: 30px;
+            border: 4px solid #dda0dd;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            max-width: 800px;
+            box-shadow: 0 0 30px rgba(139, 0, 255, 0.5);
+        }
+        
+        .instructions h3 {
+            color: #dda0dd;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        
+        .instructions p {
+            font-size: 0.8em;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+        
+        .start-button {
+            padding: 20px 40px;
+            font-size: 1.5em;
+            background: linear-gradient(45deg, #8b00ff, #9932cc);
+            color: white;
+            border: 4px solid #dda0dd;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            transition: all 0.3s;
+            box-shadow: 0 8px 0px #4b0082, 0 0 20px rgba(139, 0, 255, 0.5);
+            animation: button-glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes button-glow {
+            0%, 100% { box-shadow: 0 8px 0px #4b0082, 0 0 20px rgba(139, 0, 255, 0.5); }
+            50% { box-shadow: 0 8px 0px #4b0082, 0 0 40px rgba(139, 0, 255, 0.8); }
+        }
+        
+        .start-button:hover {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0px #4b0082, 0 0 30px rgba(139, 0, 255, 0.8);
+        }
+        
+        .floating-hearts {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .floating-heart {
+            position: absolute;
+            font-size: 2em;
+            animation: float-heart 8s linear infinite;
+            opacity: 0.7;
+        }
+        
+        @keyframes float-heart {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7;
+            }
+            90% {
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="start-screen" id="startScreen">
+        <div class="floating-hearts" id="floatingHearts"></div>
+        
+        <div class="game-title">💜 DOOM DA GABRIELA DO AMOR 💜</div>
+        <div class="game-subtitle">🦊 Labirinto dos Corações Roxos 🦊</div>
+        
+        <div class="instructions">
+            <h3>🎮 COMO JOGAR:</h3>
+            <p><strong>🚶 MOVIMENTO:</strong> Use WASD para andar pelo labirinto 3D</p>
+            <p><strong>👀 CÂMERA:</strong> Use as setas ← → para girar e olhar ao redor</p>
+            <p><strong>💜 COLETAR:</strong> Pressione X perto dos corações roxos para coletá-los</p>
+            <p><strong>🦊 RAPOSAS:</strong> Elas são fofas mas perigosas! Evite ou atire nelas</p>
+            <p><strong>🔫 ATIRAR:</strong> Use ESPAÇO ou CLIQUE para atirar nas raposas</p>
+            <p><strong>💜 OBJETIVO:</strong> Colete todos os 5 corações roxos para conquistar o amor!</p>
+            
+            <h3>🎯 MISSÃO:</h3>
+            <p>Você é um marine do amor perdido em um labirinto mágico!</p>
+            <p>As raposas fofas guardam os corações roxos do amor verdadeiro.</p>
+            <p>Colete todos os 5 corações para conquistar o coração da Gabriela!</p>
+            <p>Cuidado: as raposas te perseguem quando te veem! 🦊💨</p>
+        </div>
+        
+        <button class="start-button" onclick="startGame()">
+            ✨ COMEÇAR AVENTURA ✨
+        </button>
+    </div>
+
+    <div class="game-container" id="gameContainer" style="display: none;">
+        <div class="viewport">
+            <canvas id="gameCanvas"></canvas>
+            <div class="crosshair">
+                <div class="crosshair-dot"></div>
+            </div>
+            <div class="controls-info">
+                <strong>DOOM 3D CONTROLS:</strong><br>
+                W/↑ - Frente<br>
+                S/↓ - Trás<br>
+                A/← - Esquerda/Girar<br>
+                D/→ - Direita/Girar<br>
+                X - Coletar Coração<br>
+                SPACE/CLICK - Atirar<br>
+                💜 Colete 5 corações roxos!<br>
+                🦊 Evite raposas fofas!<br>
+                💕 Conquiste o amor da Gabriela!
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="health-display">
+                VIDA<br>
+                <span id="health">100</span>%
+            </div>
+            
+            <div class="player-face" id="playerFace">😊</div>
+            
+            <div class="hearts-display">
+                CORAÇÕES<br>
+                <span id="heartsCount">0</span>/5
+            </div>
+            
+            <div class="weapon-sprite"></div>
+        </div>
+    </div>
+    
+    <div class="proposal-modal" id="proposalModal">
+        <div class="proposal-content">
+            <div class="proposal-title">💍 LEVEL COMPLETE! 💍</div>
+            <div class="ring-emoji">💎</div>
+            <div style="font-size: 1.5em; margin-bottom: 30px; line-height: 1.6;">
+                PARABÉNS, DOOM MARINE!<br>
+                Você coletou todos os corações<br>
+                e sobreviveu ao labirinto do amor!<br><br>
+                <strong style="color: #ffff00;">QUER CASAR COMIGO?</strong>
+            </div>
+            <div>
+                <button class="doom-button btn-yes" onclick="acceptProposal()">SIM! 💕</button>
+                <button class="doom-button btn-no" onclick="declineProposal()">Não... 💔</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="victory-message" id="victoryMessage">
+        🎉 BOSS FINAL DERROTADO! 🎉<br>
+        💒 CONQUISTA DESBLOQUEADA:<br>
+        "AMOR ETERNO" 💒
+    </div>
+
+    <script>
+        // Configuração do canvas
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        // Variáveis do jogador - movimento mais realista como Doom
+        let player = {
+            x: 96,
+            y: 96,
+            angle: 0,
+            speed: 3,
+            rotSpeed: 0.06,
+            strafeSpeed: 2.5,
+            bobOffset: 0,
+            bobSpeed: 0.15
+        };
+        
+        // Mapa do labirinto (1 = parede, 0 = espaço livre)
+        const mapWidth = 16;
+        const mapHeight = 12;
+        const tileSize = 64;
+        
+        let gameMap = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,1,0,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,0,1,1,0,1,0,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+        
+        // Sprites (corações roxos, raposas e caixa do anel) com posições estratégicas escondidas no labirinto
+        let sprites = [
+            // Corações roxos em cantos escondidos do labirinto
+            { x: 896, y: 192, type: 'heart', active: true, bobOffset: 0, bobSpeed: 0.1 }, // Canto superior direito
+            { x: 192, y: 640, type: 'heart', active: true, bobOffset: 1, bobSpeed: 0.12 }, // Canto inferior esquerdo
+            { x: 704, y: 128, type: 'heart', active: true, bobOffset: 2, bobSpeed: 0.08 }, // Corredor superior
+            { x: 128, y: 448, type: 'heart', active: true, bobOffset: 3, bobSpeed: 0.15 }, // Corredor esquerdo
+            { x: 576, y: 640, type: 'heart', active: true, bobOffset: 4, bobSpeed: 0.09 }, // Corredor inferior
+            
+            // Caixa com anel no final do labirinto (canto inferior direito)
+            { x: 896, y: 640, type: 'ringbox', active: true, bobOffset: 0, bobSpeed: 0.05, glowIntensity: 0 },
+            
+            // Raposas fofas escondidas em becos e cantos do labirinto
+            { x: 896, y: 448, type: 'enemy', active: true, speed: 0.8, lastPlayerX: 0, lastPlayerY: 0, 
+              chaseMode: false, patrolAngle: 0, patrolSpeed: 0.01, alertDistance: 100, attackDistance: 30,
+              originalX: 896, originalY: 448, patrolRadius: 20, health: 1 }, // Canto direito meio
+            { x: 192, y: 320, type: 'enemy', active: true, speed: 0.7, lastPlayerX: 0, lastPlayerY: 0, 
+              chaseMode: false, patrolAngle: 2, patrolSpeed: 0.015, alertDistance: 100, attackDistance: 30,
+              originalX: 192, originalY: 320, patrolRadius: 15, health: 1 }, // Beco esquerdo
+            { x: 448, y: 128, type: 'enemy', active: true, speed: 0.9, lastPlayerX: 0, lastPlayerY: 0, 
+              chaseMode: false, patrolAngle: 4, patrolSpeed: 0.008, alertDistance: 100, attackDistance: 30,
+              originalX: 448, originalY: 128, patrolRadius: 25, health: 1 }, // Corredor superior meio
+            { x: 768, y: 320, type: 'enemy', active: true, speed: 0.8, lastPlayerX: 0, lastPlayerY: 0, 
+              chaseMode: false, patrolAngle: 1, patrolSpeed: 0.012, alertDistance: 100, attackDistance: 30,
+              originalX: 768, originalY: 320, patrolRadius: 20, health: 1 } // Meio direito
+        ];
+        
+        // Sistema de tiro
+        let bullets = [];
+        let gameTime = 0;
+        
+        // Variáveis do jogo
+        let heartsCollected = 0;
+        let health = 100;
+        let keys = {};
+        
+        // Controles
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            // Atirar com SPACE
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                shoot();
+            }
+            
+            // Coletar coração com X
+            if (e.key.toLowerCase() === 'x') {
+                collectNearbyHeart();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+        
+        // Atirar com clique do mouse
+        canvas.addEventListener('click', (e) => {
+            shoot();
+        });
+        
+        // Função para coletar coração próximo
+        function collectNearbyHeart() {
+            for (let i = 0; i < sprites.length; i++) {
+                const sprite = sprites[i];
+                if (!sprite.active || sprite.type !== 'heart') continue;
+                
+                const dx = player.x - sprite.x;
+                const dy = player.y - sprite.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 80) { // Área maior para coleta
+                    sprite.active = false;
+                    heartsCollected++;
+                    document.getElementById('heartsCount').textContent = heartsCollected;
+                    document.getElementById('playerFace').textContent = '😍';
+                    
+                    // Som de coleta (visual)
+                    createPickupEffect(sprite.x, sprite.y);
+                    
+                    setTimeout(() => {
+                        document.getElementById('playerFace').textContent = '😊';
+                    }, 500);
+                    
+                    // Agora só mostra a proposta quando chegar na caixa do anel
+                    if (heartsCollected >= 5) {
+                        // Mensagem indicando para ir até a caixa
+                        const instructionDiv = document.createElement('div');
+                        instructionDiv.innerHTML = '💍 Agora vá até a caixa dourada do anel! 💍';
+                        instructionDiv.style.position = 'fixed';
+                        instructionDiv.style.left = '50%';
+                        instructionDiv.style.top = '25%';
+                        instructionDiv.style.transform = 'translate(-50%, -50%)';
+                        instructionDiv.style.fontSize = '24px';
+                        instructionDiv.style.color = '#ffd700';
+                        instructionDiv.style.fontWeight = 'bold';
+                        instructionDiv.style.pointerEvents = 'none';
+                        instructionDiv.style.zIndex = '1000';
+                        instructionDiv.style.textShadow = '3px 3px 6px rgba(0,0,0,0.8)';
+                        instructionDiv.style.animation = 'instruction-fade 3s ease-out forwards';
+                        
+                        document.body.appendChild(instructionDiv);
+                        
+                        setTimeout(() => {
+                            instructionDiv.remove();
+                        }, 3000);
+                    }
+                    return;
+                }
+            }
+        }
+        
+        // Função para verificar colisão com paredes
+        function checkWallCollision(x, y) {
+            const mapX = Math.floor(x / tileSize);
+            const mapY = Math.floor(y / tileSize);
+            
+            if (mapX < 0 || mapX >= mapWidth || mapY < 0 || mapY >= mapHeight) {
+                return true;
+            }
+            
+            return gameMap[mapY][mapX] === 1;
+        }
+        
+        // Função de tiro
+        function shoot() {
+            // Criar projétil
+            bullets.push({
+                x: player.x,
+                y: player.y,
+                dx: Math.cos(player.angle) * 12,
+                dy: Math.sin(player.angle) * 12,
+                life: 80
+            });
+            
+            // Efeito visual da arma com glitter
+            const weapon = document.querySelector('.weapon-sprite');
+            weapon.style.transform = 'translateX(-50%) scale(1.3)';
+            weapon.style.filter = 'brightness(3) saturate(2)';
+            
+            // Criar glitter da arma
+            createWeaponGlitter();
+            
+            setTimeout(() => {
+                weapon.style.transform = 'translateX(-50%) scale(1)';
+                weapon.style.filter = 'none';
+            }, 150);
+        }
+        
+        // Criar efeito de glitter da arma
+        function createWeaponGlitter() {
+            for (let i = 0; i < 12; i++) {
+                setTimeout(() => {
+                    const glitter = document.createElement('div');
+                    glitter.innerHTML = '✨';
+                    glitter.style.position = 'fixed';
+                    glitter.style.left = '50%';
+                    glitter.style.bottom = '20%';
+                    glitter.style.transform = `translate(${(Math.random() - 0.5) * 200}px, ${Math.random() * -100}px)`;
+                    glitter.style.fontSize = (Math.random() * 15 + 10) + 'px';
+                    glitter.style.color = ['#ff69b4', '#dda0dd', '#9932cc', '#8b00ff'][Math.floor(Math.random() * 4)];
+                    glitter.style.pointerEvents = 'none';
+                    glitter.style.zIndex = '500';
+                    glitter.style.animation = 'weapon-glitter 0.8s ease-out forwards';
+                    
+                    document.body.appendChild(glitter);
+                    
+                    setTimeout(() => {
+                        glitter.remove();
+                    }, 800);
+                }, i * 30);
+            }
+        }
+        
+        // Atualizar projéteis
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                // Mover projétil
+                bullet.x += bullet.dx;
+                bullet.y += bullet.dy;
+                bullet.life--;
+                
+                // Verificar colisão com paredes
+                if (checkWallCollision(bullet.x, bullet.y) || bullet.life <= 0) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Verificar colisão com inimigos
+                for (let sprite of sprites) {
+                    if (!sprite.active || sprite.type !== 'enemy') continue;
+                    
+                    const dx = bullet.x - sprite.x;
+                    const dy = bullet.y - sprite.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 60) { // Área muito maior para acertar facilmente
+                        sprite.active = false;
+                        bullets.splice(i, 1);
+                        
+                        // Efeito de explosão melhorado
+                        createFoxDefeatEffect(sprite.x, sprite.y);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Função para verificar colisão com sprites
+        function checkSpriteCollision(x, y) {
+            for (let i = 0; i < sprites.length; i++) {
+                const sprite = sprites[i];
+                if (!sprite.active) continue;
+                
+                const dx = x - sprite.x;
+                const dy = y - sprite.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 50) { // Área maior para colisão
+                    if (sprite.type === 'ringbox' && heartsCollected >= 5) {
+                        // Só pode abrir a caixa depois de coletar todos os corações
+                        sprite.active = false;
+                        document.getElementById('playerFace').textContent = '🤩';
+                        
+                        // Efeito especial da caixa
+                        createRingBoxEffect(sprite.x, sprite.y);
+                        
+                        setTimeout(() => {
+                            document.getElementById('proposalModal').style.display = 'flex';
+                        }, 1500);
+                        return true;
+                    } else if (sprite.type === 'ringbox' && heartsCollected < 5) {
+                        // Mensagem se tentar abrir sem todos os corações
+                        const warningDiv = document.createElement('div');
+                        warningDiv.innerHTML = `💜 Colete todos os 5 corações primeiro! (${heartsCollected}/5) 💜`;
+                        warningDiv.style.position = 'fixed';
+                        warningDiv.style.left = '50%';
+                        warningDiv.style.top = '30%';
+                        warningDiv.style.transform = 'translate(-50%, -50%)';
+                        warningDiv.style.fontSize = '20px';
+                        warningDiv.style.color = '#dda0dd';
+                        warningDiv.style.fontWeight = 'bold';
+                        warningDiv.style.pointerEvents = 'none';
+                        warningDiv.style.zIndex = '1000';
+                        warningDiv.style.textShadow = '3px 3px 6px rgba(0,0,0,0.8)';
+                        warningDiv.style.animation = 'warning-fade 2s ease-out forwards';
+                        
+                        document.body.appendChild(warningDiv);
+                        
+                        setTimeout(() => {
+                            warningDiv.remove();
+                        }, 2000);
+                    }
+                }
+                
+                // Colisão com inimigos (menor área)
+                if (distance < 30 && sprite.type === 'enemy') {
+                    health -= 25;
+                    document.getElementById('health').textContent = health;
+                    
+                    const face = document.getElementById('playerFace');
+                    if (health > 75) face.textContent = '😊';
+                    else if (health > 50) face.textContent = '😐';
+                    else if (health > 25) face.textContent = '😰';
+                    else if (health > 0) face.textContent = '🤕';
+                    else face.textContent = '💀';
+                    
+                    if (health <= 0) {
+                        setTimeout(() => {
+                            alert('💀 VOCÊ MORREU! Pressione F5 para tentar novamente!');
+                            location.reload();
+                        }, 500);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Atualizar sprites (animações e IA)
+        function updateSprites() {
+            gameTime += 0.016; // ~60fps
+            
+            for (let sprite of sprites) {
+                if (!sprite.active) continue;
+                
+                if (sprite.type === 'heart') {
+                    // Animação de flutuação dos corações
+                    sprite.bobOffset += sprite.bobSpeed;
+                } else if (sprite.type === 'ringbox') {
+                    // Animação da caixa do anel
+                    sprite.bobOffset += sprite.bobSpeed;
+                    sprite.glowIntensity += 0.05;
+                } else if (sprite.type === 'enemy') {
+                    // IA do inimigo
+                    const dx = player.x - sprite.x;
+                    const dy = player.y - sprite.y;
+                    const distanceToPlayer = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Verificar se o jogador está próximo (alerta)
+                    if (distanceToPlayer < sprite.alertDistance) {
+                        sprite.chaseMode = true;
+                        sprite.lastPlayerX = player.x;
+                        sprite.lastPlayerY = player.y;
+                    }
+                    
+                    if (sprite.chaseMode) {
+                        // Modo perseguição - mover em direção ao jogador
+                        const angle = Math.atan2(dy, dx);
+                        const newX = sprite.x + Math.cos(angle) * sprite.speed;
+                        const newY = sprite.y + Math.sin(angle) * sprite.speed;
+                        
+                        // Verificar colisão com paredes antes de mover
+                        if (!checkWallCollision(newX, sprite.y)) {
+                            sprite.x = newX;
+                        }
+                        if (!checkWallCollision(sprite.x, newY)) {
+                            sprite.y = newY;
+                        }
+                        
+                        // Se perdeu o jogador de vista, voltar ao patrulhamento
+                        if (distanceToPlayer > sprite.alertDistance * 1.5) {
+                            sprite.chaseMode = false;
+                        }
+                        
+                        // Atacar se muito próximo
+                        if (distanceToPlayer < sprite.attackDistance) {
+                            // Causar dano ao jogador
+                            if (Math.random() < 0.05) { // 5% chance por frame
+                                health -= 5;
+                                document.getElementById('health').textContent = health;
+                                
+                                const face = document.getElementById('playerFace');
+                                if (health > 75) face.textContent = '😊';
+                                else if (health > 50) face.textContent = '😐';
+                                else if (health > 25) face.textContent = '😰';
+                                else if (health > 0) face.textContent = '🤕';
+                                else face.textContent = '💀';
+                                
+                                if (health <= 0) {
+                                    setTimeout(() => {
+                                        alert('💀 VOCÊ MORREU! Os inimigos te pegaram! Pressione F5 para tentar novamente!');
+                                        location.reload();
+                                    }, 500);
+                                }
+                            }
+                        }
+                    } else {
+                        // Modo patrulhamento - movimento circular limitado ao raio
+                        sprite.patrolAngle += sprite.patrolSpeed;
+                        const patrolX = sprite.originalX + Math.cos(sprite.patrolAngle) * sprite.patrolRadius;
+                        const patrolY = sprite.originalY + Math.sin(sprite.patrolAngle) * sprite.patrolRadius;
+                        
+                        // Verificar se pode patrulhar nesta direção
+                        if (!checkWallCollision(patrolX, patrolY)) {
+                            sprite.x = patrolX;
+                            sprite.y = patrolY;
+                        } else {
+                            sprite.patrolAngle += Math.PI / 2; // Mudar direção mais drasticamente
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Atualizar jogador - movimento mais fluido como Doom
+        function updatePlayer() {
+            let isMoving = false;
+            
+            // Rotação
+            if (keys['arrowleft'] || keys['a']) {
+                player.angle -= player.rotSpeed;
+            }
+            if (keys['arrowright'] || keys['d']) {
+                player.angle += player.rotSpeed;
+            }
+            
+            // Movimento
+            let newX = player.x;
+            let newY = player.y;
+            
+            // Movimento para frente/trás
+            if (keys['w'] || keys['arrowup']) {
+                newX += Math.cos(player.angle) * player.speed;
+                newY += Math.sin(player.angle) * player.speed;
+                isMoving = true;
+            }
+            if (keys['s'] || keys['arrowdown']) {
+                newX -= Math.cos(player.angle) * player.speed * 0.7; // Movimento para trás mais lento
+                newY -= Math.sin(player.angle) * player.speed * 0.7;
+                isMoving = true;
+            }
+            
+            // Movimento lateral (strafe) - apenas com A/D se não estiver girando
+            if (keys['a'] && !keys['arrowleft']) {
+                newX += Math.cos(player.angle - Math.PI/2) * player.strafeSpeed;
+                newY += Math.sin(player.angle - Math.PI/2) * player.strafeSpeed;
+                isMoving = true;
+            }
+            if (keys['d'] && !keys['arrowright']) {
+                newX += Math.cos(player.angle + Math.PI/2) * player.strafeSpeed;
+                newY += Math.sin(player.angle + Math.PI/2) * player.strafeSpeed;
+                isMoving = true;
+            }
+            
+            // Verificar colisão com paredes - sistema corrigido
+            const buffer = 20; // Buffer de colisão
+            if (!checkWallCollision(newX, player.y)) {
+                player.x = newX;
+            }
+            if (!checkWallCollision(player.x, newY)) {
+                player.y = newY;
+            }
+            
+            // Efeito de balanço da câmera quando andando
+            if (isMoving) {
+                player.bobOffset += player.bobSpeed;
+            } else {
+                player.bobOffset *= 0.95; // Diminui gradualmente quando parado
+            }
+            
+            // Verificar colisão com sprites
+            checkSpriteCollision(player.x, player.y);
+        }
+        
+        // Função para renderizar sprites 3D
+        function renderSprites() {
+            // Calcular distância e ângulo para cada sprite
+            let visibleSprites = [];
+            
+            for (let sprite of sprites) {
+                if (!sprite.active) continue;
+                
+                const dx = sprite.x - player.x;
+                const dy = sprite.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Calcular ângulo relativo ao jogador
+                let spriteAngle = Math.atan2(dy, dx) - player.angle;
+                
+                // Normalizar ângulo
+                while (spriteAngle > Math.PI) spriteAngle -= 2 * Math.PI;
+                while (spriteAngle < -Math.PI) spriteAngle += 2 * Math.PI;
+                
+                // Verificar se está no campo de visão
+                const fov = Math.PI / 3;
+                if (Math.abs(spriteAngle) < fov / 2 + 0.5) {
+                    visibleSprites.push({
+                        sprite: sprite,
+                        distance: distance,
+                        angle: spriteAngle
+                    });
+                }
+            }
+            
+            // Ordenar por distância (mais longe primeiro)
+            visibleSprites.sort((a, b) => b.distance - a.distance);
+            
+            // Renderizar sprites
+            for (let visSprite of visibleSprites) {
+                const sprite = visSprite.sprite;
+                const distance = visSprite.distance;
+                const angle = visSprite.angle;
+                
+                // Calcular posição na tela
+                const fov = Math.PI / 3;
+                const screenX = (canvas.width / 2) + (angle / fov) * canvas.width;
+                
+                // Calcular tamanho baseado na distância
+                const spriteSize = (canvas.height / distance) * 80;
+                const spriteTop = (canvas.height - spriteSize) / 2;
+                
+                // Não renderizar se muito longe ou fora da tela
+                if (distance > 400 || screenX < -spriteSize || screenX > canvas.width + spriteSize) {
+                    continue;
+                }
+                
+                // Renderizar sprite baseado no tipo
+                if (sprite.type === 'heart') {
+                    // Animação de flutuação
+                    const bobAmount = Math.sin(sprite.bobOffset) * 8;
+                    const animatedTop = spriteTop + bobAmount;
+                    
+                    // Coração roxo em pixel art - tamanho maior
+                    const pulse = Math.sin(gameTime * 4) * 0.3 + 1.2;
+                    const heartSize = Math.max(spriteSize * pulse, 40);
+                    const pixelSize = Math.max(2, heartSize / 16); // Tamanho do pixel
+                    
+                    // Sombra pixelizada
+                    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                    for (let py = 0; py < 16; py++) {
+                        for (let px = 0; px < 16; px++) {
+                            // Padrão de coração em pixel art
+                            const heartPattern = [
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0],
+                                [0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0],
+                                [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+                                [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+                                [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+                                [0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                                [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0],
+                                [0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0],
+                                [0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                            ];
+                            
+                            if (heartPattern[py] && heartPattern[py][px]) {
+                                ctx.fillRect(
+                                    screenX - heartSize/2 + px * pixelSize + 2,
+                                    animatedTop + py * pixelSize + 2,
+                                    pixelSize,
+                                    pixelSize
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Coração principal em pixel art
+                    for (let py = 0; py < 16; py++) {
+                        for (let px = 0; px < 16; px++) {
+                            const heartPattern = [
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0],
+                                [0,0,1,2,2,2,1,0,1,2,2,2,1,0,0,0],
+                                [0,1,2,2,3,2,2,1,2,2,3,2,2,1,0,0],
+                                [0,1,2,3,2,2,2,2,2,2,2,3,2,1,0,0],
+                                [0,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0],
+                                [0,0,1,2,2,2,2,2,2,2,2,2,1,0,0,0],
+                                [0,0,0,1,2,2,2,2,2,2,2,1,0,0,0,0],
+                                [0,0,0,0,1,2,2,2,2,2,1,0,0,0,0,0],
+                                [0,0,0,0,0,1,2,2,2,1,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                            ];
+                            
+                            if (heartPattern[py] && heartPattern[py][px]) {
+                                let color = '#8b00ff'; // Roxo escuro
+                                if (heartPattern[py][px] === 2) color = '#9932cc'; // Roxo médio
+                                if (heartPattern[py][px] === 3) color = '#dda0dd'; // Roxo claro (brilho)
+                                
+                                ctx.fillStyle = color;
+                                ctx.fillRect(
+                                    screenX - heartSize/2 + px * pixelSize,
+                                    animatedTop + py * pixelSize,
+                                    pixelSize,
+                                    pixelSize
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Partículas de brilho pixelizadas
+                    if (Math.random() < 0.3) {
+                        ctx.fillStyle = '#ffffff';
+                        const sparkleX = screenX + (Math.random() - 0.5) * heartSize * 1.2;
+                        const sparkleY = animatedTop + Math.random() * heartSize;
+                        ctx.fillRect(sparkleX, sparkleY, pixelSize, pixelSize);
+                    }
+                    
+                } else if (sprite.type === 'enemy') {
+                    // Raposa SUPER fofa em pixel art - ainda mais adorável!
+                    const sway = Math.sin(gameTime * 3) * 2;
+                    const foxSize = Math.max(spriteSize, 55); // Ligeiramente maior
+                    const foxTop = (canvas.height - foxSize) / 2;
+                    const pixelSize = Math.max(2, foxSize / 22); // Mais detalhada
+                    
+                    // Verificar se está em modo de perseguição
+                    const isChasing = sprite.chaseMode;
+                    
+                    // Sombra pixelizada mais suave
+                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                    for (let px = 3; px < 19; px++) {
+                        ctx.fillRect(
+                            screenX - foxSize/2 + px * pixelSize + 2,
+                            foxTop + 20 * pixelSize + 2,
+                            pixelSize,
+                            pixelSize
+                        );
+                    }
+                    
+                    // Raposa ULTRA fofa com olhos GIGANTES e mais detalhes
+                    const animFrame = Math.floor(gameTime * 3) % 3; // Piscar mais lento e fofo
+                    const walkFrame = Math.floor(gameTime * 5) % 4; // Caminhada mais suave
+                    const happyFrame = Math.floor(gameTime * 2) % 2; // Expressão feliz
+                    
+                    const foxPattern = [
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0], // orelhas ainda maiores
+                        [0,0,0,1,2,8,8,2,1,0,0,1,2,8,8,2,1,0,0,0,0,0], // orelhas com interior rosa
+                        [0,0,1,2,2,8,8,2,2,1,1,2,2,8,8,2,2,1,0,0,0,0], // cabeça redonda
+                        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0],
+                        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0],
+                        [0,1,2,4,4,4,4,4,2,2,2,4,4,4,4,4,2,2,1,0,0,0], // olhos GIGANTES
+                        [0,1,2,4,6,6,6,6,4,2,2,4,6,6,6,6,4,2,1,0,0,0], // olhos com mais brilho
+                        [0,1,2,4,6,6,animFrame === 0 ? 1 : 6,6,4,2,2,4,6,6,animFrame === 0 ? 1 : 6,6,4,2,1,0,0,0], // piscar fofo
+                        [0,1,2,4,6,6,6,6,4,5,5,4,6,6,6,6,4,2,1,0,0,0], // nariz rosa maior
+                        [0,1,2,2,4,4,4,4,2,5,5,2,4,4,4,4,2,2,1,0,0,0], // focinho mais fofo
+                        [0,0,1,2,2,2,3,3,7,7,7,7,3,3,2,2,2,1,0,0,0,0], // boquinha sorridente
+                        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0], // corpo
+                        [1,2,2,2,2,3,3,3,3,3,3,3,3,3,3,2,2,2,2,1,0,0], // barriga fofa maior
+                        [1,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,2,2,1,0,0],
+                        [0,1,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,2,1,0,0,0],
+                        [0,0,1,2,3,3,3,3,3,3,3,3,3,3,3,3,2,1,0,0,0,0],
+                        [0,0,0,1,1,2,2,2,2,2,2,2,2,2,2,1,1,0,0,0,0,0], // pernas
+                        [0,0,0,0,1,1,2,2,walkFrame < 2 ? 2 : 0,0,0,walkFrame < 2 ? 0 : 2,2,2,1,1,0,0,0,0,0], // patas animadas
+                        [0,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ];
+                    
+                    // Cauda fofa separada com animação mais intensa
+                    const tailWag = Math.sin(gameTime * 10) * 4; // Balançar mais rápido e fofo
+                    const tailPattern = [
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,1,1,1,1,0,0],
+                        [0,0,1,2,3,3,2,1,0], // Cauda mais fofa
+                        [0,1,2,3,3,3,3,2,1],
+                        [1,2,3,3,3,3,3,3,1],
+                        [1,2,3,3,3,3,2,1,0],
+                        [0,1,2,3,3,2,1,0,0],
+                        [0,0,1,2,2,1,0,0,0],
+                        [0,0,0,1,1,0,0,0,0]
+                    ];
+                    
+                    // Renderizar cauda com animação mais fofa
+                    for (let py = 0; py < 9; py++) {
+                        for (let px = 0; px < 9; px++) {
+                            if (tailPattern[py][px]) {
+                                let color = '#8b4513'; // Marrom escuro
+                                if (tailPattern[py][px] === 2) color = '#ff8c00'; // Laranja fofo
+                                if (tailPattern[py][px] === 3) color = '#fff8dc'; // Ponta da cauda clara e fofa
+                                
+                                ctx.fillStyle = color;
+                                ctx.fillRect(
+                                    screenX - foxSize/2 - 7 * pixelSize + px * pixelSize + sway + tailWag,
+                                    foxTop + (py + 9) * pixelSize,
+                                    pixelSize,
+                                    pixelSize
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Renderizar raposa principal ULTRA FOFA
+                    for (let py = 0; py < 22; py++) {
+                        for (let px = 0; px < 22; px++) {
+                            if (foxPattern[py][px]) {
+                                let color = '#8b4513'; // Contorno marrom
+                                if (foxPattern[py][px] === 2) color = '#ff8c00'; // Laranja fofo sempre
+                                if (foxPattern[py][px] === 3) color = '#fff8dc'; // Barriga clara e fofa
+                                if (foxPattern[py][px] === 4) color = '#000000'; // Olhos pretos fofos
+                                if (foxPattern[py][px] === 5) color = '#ff69b4'; // Nariz rosa SUPER fofo
+                                if (foxPattern[py][px] === 6) color = '#ffffff'; // Brilho dos olhos gigantes
+                                if (foxPattern[py][px] === 7) color = '#ff1493'; // Boquinha rosa sorridente
+                                if (foxPattern[py][px] === 8) color = '#ffb6c1'; // Interior das orelhas rosa
+                                
+                                ctx.fillStyle = color;
+                                ctx.fillRect(
+                                    screenX - foxSize/2 + px * pixelSize + sway,
+                                    foxTop + py * pixelSize,
+                                    pixelSize,
+                                    pixelSize
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Efeito de alerta quando perseguindo
+                    if (isChasing) {
+                        // Aura vermelha pixelizada
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                        ctx.fillRect(screenX - foxSize/1.2 + sway, foxTop - 5, foxSize * 1.4, foxSize + 10);
+                        
+                        // Indicador de alerta pixelizado
+                        ctx.fillStyle = '#ffff00';
+                        const alertSize = Math.max(2, pixelSize);
+                        ctx.fillRect(screenX - alertSize, foxTop - 15, alertSize * 2, alertSize * 8);
+                        ctx.fillRect(screenX - alertSize, foxTop - 5, alertSize * 2, alertSize * 2);
+                    }
+                    
+                } else if (sprite.type === 'ringbox') {
+                    // Caixa do anel em pixel art
+                    const bobAmount = Math.sin(sprite.bobOffset) * 4;
+                    const animatedTop = spriteTop + bobAmount;
+                    const boxSize = Math.max(spriteSize, 45);
+                    const pixelSize = Math.max(2, boxSize / 16);
+                    const glow = Math.sin(sprite.glowIntensity) * 0.5 + 0.5;
+                    
+                    // Sombra da caixa
+                    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                    for (let px = 2; px < 14; px++) {
+                        ctx.fillRect(
+                            screenX - boxSize/2 + px * pixelSize + 2,
+                            animatedTop + 14 * pixelSize + 2,
+                            pixelSize,
+                            pixelSize
+                        );
+                    }
+                    
+                    // Caixa de anel em pixel art 16x16
+                    const boxPattern = [
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                        [0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0], // tampa
+                        [0,0,1,2,3,3,3,4,4,3,3,3,2,1,0,0], // anel brilhante
+                        [0,0,1,2,3,4,4,5,5,4,4,3,2,1,0,0],
+                        [0,0,1,2,3,3,3,4,4,3,3,3,2,1,0,0],
+                        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+                        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0], // corpo da caixa
+                        [0,1,2,6,6,6,6,6,6,6,6,6,6,2,1,0],
+                        [0,1,2,6,6,6,6,6,6,6,6,6,6,2,1,0],
+                        [0,1,2,6,6,6,6,6,6,6,6,6,6,2,1,0],
+                        [0,1,2,6,6,6,6,6,6,6,6,6,6,2,1,0],
+                        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
+                        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ];
+                    
+                    for (let py = 0; py < 16; py++) {
+                        for (let px = 0; px < 16; px++) {
+                            if (boxPattern[py][px]) {
+                                let color = '#8b4513'; // Contorno marrom
+                                if (boxPattern[py][px] === 2) color = '#daa520'; // Dourado
+                                if (boxPattern[py][px] === 3) color = '#c0c0c0'; // Prata (anel)
+                                if (boxPattern[py][px] === 4) color = '#ffffff'; // Brilho do anel
+                                if (boxPattern[py][px] === 5) color = '#ff69b4'; // Diamante rosa
+                                if (boxPattern[py][px] === 6) color = '#8b0000'; // Interior vermelho
+                                
+                                // Adicionar brilho dourado
+                                if (boxPattern[py][px] === 2) {
+                                    const brightness = Math.floor(255 * (0.8 + glow * 0.4));
+                                    color = `rgb(${brightness}, ${Math.floor(brightness * 0.8)}, 32)`;
+                                }
+                                
+                                ctx.fillStyle = color;
+                                ctx.fillRect(
+                                    screenX - boxSize/2 + px * pixelSize,
+                                    animatedTop + py * pixelSize,
+                                    pixelSize,
+                                    pixelSize
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Partículas de brilho dourado
+                    if (Math.random() < 0.4) {
+                        ctx.fillStyle = '#ffd700';
+                        const sparkleX = screenX + (Math.random() - 0.5) * boxSize * 1.5;
+                        const sparkleY = animatedTop + Math.random() * boxSize;
+                        ctx.fillRect(sparkleX, sparkleY, pixelSize, pixelSize);
+                    }
+                }
+            }
+        }
+        
+        // Raycasting 3D
+        function castRays() {
+            const numRays = canvas.width;
+            const fov = Math.PI / 3; // 60 graus
+            const angleStep = fov / numRays;
+            
+            // Buffer de profundidade para sprites
+            let depthBuffer = new Array(canvas.width).fill(Infinity);
+            
+            // Efeito de balanço da câmera
+            const bobAmount = Math.sin(player.bobOffset) * 8;
+            const skyHeight = (canvas.height / 2) + bobAmount;
+            const floorY = skyHeight;
+            
+            // Limpar canvas - cores mais sombrias
+            ctx.fillStyle = '#2c1810'; // Céu escuro
+            ctx.fillRect(0, 0, canvas.width, skyHeight);
+            
+            ctx.fillStyle = '#1a0f0a'; // Chão escuro
+            ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+            
+            // Renderizar paredes
+            for (let i = 0; i < numRays; i++) {
+                const rayAngle = player.angle - fov/2 + i * angleStep;
+                
+                // Lançar raio
+                let rayX = player.x;
+                let rayY = player.y;
+                const rayDx = Math.cos(rayAngle);
+                const rayDy = Math.sin(rayAngle);
+                
+                let distance = 0;
+                let hitWall = false;
+                
+                while (!hitWall && distance < 1000) {
+                    distance += 1;
+                    rayX = player.x + rayDx * distance;
+                    rayY = player.y + rayDy * distance;
+                    
+                    if (checkWallCollision(rayX, rayY)) {
+                        hitWall = true;
+                    }
+                }
+                
+                // Corrigir distorção de perspectiva
+                distance *= Math.cos(rayAngle - player.angle);
+                depthBuffer[i] = distance;
+                
+                // Calcular altura da parede com efeito de balanço
+                const wallHeight = (canvas.height / distance) * 100;
+                const wallTop = (canvas.height - wallHeight) / 2 + bobAmount;
+                
+                // Desenhar parede
+                if (hitWall) {
+                    // Gradiente baseado na distância - cores mais escuras
+                    const brightness = Math.max(0.1, 0.8 - distance / 500);
+                    const red = Math.floor(80 * brightness);
+                    const green = Math.floor(40 * brightness);
+                    const blue = Math.floor(20 * brightness);
+                    
+                    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+                    ctx.fillRect(i, wallTop, 1, wallHeight);
+                    
+                    // Adicionar textura simples mais escura
+                    if (Math.floor(rayX / 16) % 2 === Math.floor(rayY / 16) % 2) {
+                        ctx.fillStyle = `rgb(${Math.min(255, red + 20)}, ${Math.min(255, green + 15)}, ${Math.min(255, blue + 10)})`;
+                        ctx.fillRect(i, wallTop, 1, wallHeight);
+                    }
+                }
+            }
+            
+            // Renderizar sprites após as paredes
+            renderSprites();
+            
+            // Renderizar projéteis
+            renderBullets();
+        }
+        
+        // Renderizar projéteis
+        function renderBullets() {
+            ctx.fillStyle = '#ffff00';
+            for (let bullet of bullets) {
+                // Calcular posição na tela
+                const dx = bullet.x - player.x;
+                const dy = bullet.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 5) continue; // Muito perto do jogador
+                
+                // Calcular ângulo relativo
+                let bulletAngle = Math.atan2(dy, dx) - player.angle;
+                while (bulletAngle > Math.PI) bulletAngle -= 2 * Math.PI;
+                while (bulletAngle < -Math.PI) bulletAngle += 2 * Math.PI;
+                
+                const fov = Math.PI / 3;
+                if (Math.abs(bulletAngle) < fov / 2) {
+                    const screenX = (canvas.width / 2) + (bulletAngle / fov) * canvas.width;
+                    const bulletSize = Math.max(2, 20 / distance);
+                    
+                    // Projétil brilhante
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fillRect(screenX - bulletSize/2, canvas.height/2 - bulletSize/2, bulletSize, bulletSize);
+                    
+                    // Rastro
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.fillRect(screenX - bulletSize/4, canvas.height/2 - bulletSize/4, bulletSize/2, bulletSize/2);
+                }
+            }
+        }
+        
+        // Criar efeito de explosão
+        function createExplosion(x, y) {
+            // Efeito visual simples na tela
+            const explosionDiv = document.createElement('div');
+            explosionDiv.innerHTML = '💥';
+            explosionDiv.style.position = 'fixed';
+            explosionDiv.style.left = '50%';
+            explosionDiv.style.top = '50%';
+            explosionDiv.style.transform = 'translate(-50%, -50%)';
+            explosionDiv.style.fontSize = '48px';
+            explosionDiv.style.pointerEvents = 'none';
+            explosionDiv.style.zIndex = '1000';
+            explosionDiv.style.animation = 'explosion-fade 0.5s ease-out forwards';
+            
+            document.body.appendChild(explosionDiv);
+            
+            setTimeout(() => {
+                explosionDiv.remove();
+            }, 500);
+        }
+        
+        // Criar efeito especial quando raposa é derrotada
+        function createFoxDefeatEffect(x, y) {
+            const defeatDiv = document.createElement('div');
+            defeatDiv.innerHTML = '🦊💫 RAPOSA DERROTADA! 💫';
+            defeatDiv.style.position = 'fixed';
+            defeatDiv.style.left = '50%';
+            defeatDiv.style.top = '40%';
+            defeatDiv.style.transform = 'translate(-50%, -50%)';
+            defeatDiv.style.fontSize = '24px';
+            defeatDiv.style.color = '#dda0dd';
+            defeatDiv.style.fontWeight = 'bold';
+            defeatDiv.style.pointerEvents = 'none';
+            defeatDiv.style.zIndex = '1000';
+            defeatDiv.style.textShadow = '3px 3px 6px rgba(0,0,0,0.8)';
+            defeatDiv.style.animation = 'fox-defeat-fade 1s ease-out forwards';
+            
+            document.body.appendChild(defeatDiv);
+            
+            // Criar partículas roxas
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    createPurpleParticle();
+                }, i * 100);
+            }
+            
+            setTimeout(() => {
+                defeatDiv.remove();
+            }, 1000);
+        }
+        
+        function createPurpleParticle() {
+            const particle = document.createElement('div');
+            particle.innerHTML = '✨';
+            particle.style.position = 'fixed';
+            particle.style.left = (Math.random() * window.innerWidth) + 'px';
+            particle.style.top = (Math.random() * window.innerHeight) + 'px';
+            particle.style.fontSize = (Math.random() * 15 + 10) + 'px';
+            particle.style.color = '#dda0dd';
+            particle.style.pointerEvents = 'none';
+            particle.style.zIndex = '999';
+            particle.style.animation = 'purple-sparkle 1.5s ease-out forwards';
+            
+            document.body.appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 1500);
+        }
+        
+        // Criar efeito de coleta de coração
+        function createPickupEffect(x, y) {
+            const pickupDiv = document.createElement('div');
+            pickupDiv.innerHTML = '💜+1';
+            pickupDiv.style.position = 'fixed';
+            pickupDiv.style.left = '50%';
+            pickupDiv.style.top = '40%';
+            pickupDiv.style.transform = 'translate(-50%, -50%)';
+            pickupDiv.style.fontSize = '32px';
+            pickupDiv.style.color = '#9932cc';
+            pickupDiv.style.fontWeight = 'bold';
+            pickupDiv.style.pointerEvents = 'none';
+            pickupDiv.style.zIndex = '1000';
+            pickupDiv.style.animation = 'pickup-fade 1s ease-out forwards';
+            
+            document.body.appendChild(pickupDiv);
+            
+            setTimeout(() => {
+                pickupDiv.remove();
+            }, 1000);
+        }
+        
+        // Criar efeito especial da caixa do anel
+        function createRingBoxEffect(x, y) {
+            const ringDiv = document.createElement('div');
+            ringDiv.innerHTML = '💍✨ ANEL ENCONTRADO! ✨💍';
+            ringDiv.style.position = 'fixed';
+            ringDiv.style.left = '50%';
+            ringDiv.style.top = '30%';
+            ringDiv.style.transform = 'translate(-50%, -50%)';
+            ringDiv.style.fontSize = '28px';
+            ringDiv.style.color = '#ffd700';
+            ringDiv.style.fontWeight = 'bold';
+            ringDiv.style.pointerEvents = 'none';
+            ringDiv.style.zIndex = '1000';
+            ringDiv.style.textShadow = '3px 3px 6px rgba(0,0,0,0.8)';
+            ringDiv.style.animation = 'ring-box-effect 1.5s ease-out forwards';
+            
+            document.body.appendChild(ringDiv);
+            
+            // Criar múltiplas partículas douradas
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    createGoldenParticle();
+                }, i * 50);
+            }
+            
+            setTimeout(() => {
+                ringDiv.remove();
+            }, 1500);
+        }
+        
+        function createGoldenParticle() {
+            const particle = document.createElement('div');
+            particle.innerHTML = '✨';
+            particle.style.position = 'fixed';
+            particle.style.left = (Math.random() * window.innerWidth) + 'px';
+            particle.style.top = (Math.random() * window.innerHeight) + 'px';
+            particle.style.fontSize = (Math.random() * 20 + 15) + 'px';
+            particle.style.pointerEvents = 'none';
+            particle.style.zIndex = '999';
+            particle.style.animation = 'golden-sparkle 2s ease-out forwards';
+            
+            document.body.appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 2000);
+        }
+        
+        // Loop principal do jogo
+        function gameLoop() {
+            updatePlayer();
+            updateSprites();
+            updateBullets();
+            castRays();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Funções do pedido
+        function acceptProposal() {
+            document.getElementById('proposalModal').style.display = 'none';
+            document.getElementById('victoryMessage').style.display = 'block';
+            
+            // Efeito de celebração
+            setTimeout(() => {
+                for (let i = 0; i < 50; i++) {
+                    setTimeout(() => {
+                        createHeartParticle();
+                    }, i * 100);
+                }
+            }, 500);
+        }
+        
+        function declineProposal() {
+            document.getElementById('proposalModal').style.display = 'none';
+            
+            // Mostrar mensagem de missão fracassada
+            const failureDiv = document.createElement('div');
+            failureDiv.innerHTML = `
+                <div style="font-size: 3em; margin-bottom: 20px; color: #ff0000;">💔 MISSÃO FRACASSADA! 💔</div>
+                <div style="font-size: 1.5em; margin-bottom: 30px; color: #ffffff;">
+                    Você rejeitou o amor verdadeiro!<br>
+                    As raposas fofas estão muito tristes... 😢<br>
+                    Agora elas vão te atacar com fofura!
+                </div>
+                <div style="font-size: 4em; margin-bottom: 20px;">🦊💔🦊💔🦊</div>
+                <div style="font-size: 1.2em; color: #dda0dd;">
+                    Pressione F5 para tentar conquistar o amor novamente!
+                </div>
+            `;
+            failureDiv.style.position = 'fixed';
+            failureDiv.style.top = '0';
+            failureDiv.style.left = '0';
+            failureDiv.style.width = '100%';
+            failureDiv.style.height = '100%';
+            failureDiv.style.background = 'rgba(0,0,0,0.95)';
+            failureDiv.style.display = 'flex';
+            failureDiv.style.flexDirection = 'column';
+            failureDiv.style.alignItems = 'center';
+            failureDiv.style.justifyContent = 'center';
+            failureDiv.style.zIndex = '2000';
+            failureDiv.style.textAlign = 'center';
+            failureDiv.style.fontFamily = "'Press Start 2P', monospace";
+            failureDiv.style.textShadow = '3px 3px 6px rgba(0,0,0,0.8)';
+            failureDiv.style.animation = 'failure-appear 1s ease-out forwards';
+            
+            document.body.appendChild(failureDiv);
+            
+            // Spawnar muitas raposas atacando
+            setTimeout(() => {
+                spawnAttackingFoxes();
+            }, 2000);
+        }
+        
+        function createHeartParticle() {
+            const heart = document.createElement('div');
+            heart.innerHTML = '💖';
+            heart.style.position = 'fixed';
+            heart.style.left = Math.random() * window.innerWidth + 'px';
+            heart.style.top = window.innerHeight + 'px';
+            heart.style.fontSize = Math.random() * 30 + 20 + 'px';
+            heart.style.pointerEvents = 'none';
+            heart.style.zIndex = '2000';
+            heart.style.animation = 'float-up 3s ease-out forwards';
+            
+            document.body.appendChild(heart);
+            
+            setTimeout(() => {
+                heart.remove();
+            }, 3000);
+        }
+        
+        // Adicionar animação CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes float-up {
+                0% { 
+                    transform: translateY(0px) rotate(0deg);
+                    opacity: 1;
+                }
+                100% { 
+                    transform: translateY(-${window.innerHeight + 100}px) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+            @keyframes explosion-fade {
+                0% { 
+                    transform: translate(-50%, -50%) scale(0.5);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: translate(-50%, -50%) scale(2);
+                    opacity: 0.8;
+                }
+                100% { 
+                    transform: translate(-50%, -50%) scale(3);
+                    opacity: 0;
+                }
+            }
+            @keyframes pickup-fade {
+                0% { 
+                    transform: translate(-50%, -50%) scale(0.8);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: translate(-50%, -50%) scale(1.5);
+                    opacity: 0.9;
+                }
+                100% { 
+                    transform: translate(-50%, -50%) translateY(-50px) scale(0.5);
+                    opacity: 0;
+                }
+            }
+            @keyframes ring-box-effect {
+                0% { 
+                    transform: translate(-50%, -50%) scale(0.5);
+                    opacity: 0;
+                }
+                30% { 
+                    transform: translate(-50%, -50%) scale(1.3);
+                    opacity: 1;
+                }
+                70% { 
+                    transform: translate(-50%, -50%) scale(1.1);
+                    opacity: 1;
+                }
+                100% { 
+                    transform: translate(-50%, -50%) scale(0.8);
+                    opacity: 0;
+                }
+            }
+            @keyframes golden-sparkle {
+                0% { 
+                    transform: scale(0) rotate(0deg);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: scale(1.5) rotate(180deg);
+                    opacity: 0.8;
+                }
+                100% { 
+                    transform: scale(0.5) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+            @keyframes fox-defeat-fade {
+                0% { 
+                    transform: translate(-50%, -50%) scale(0.8);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: translate(-50%, -50%) scale(1.2);
+                    opacity: 0.9;
+                }
+                100% { 
+                    transform: translate(-50%, -50%) translateY(-30px) scale(0.6);
+                    opacity: 0;
+                }
+            }
+            @keyframes purple-sparkle {
+                0% { 
+                    transform: scale(0) rotate(0deg);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: scale(1.2) rotate(180deg);
+                    opacity: 0.8;
+                }
+                100% { 
+                    transform: scale(0.3) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+            @keyframes weapon-glitter {
+                0% { 
+                    transform: scale(0) rotate(0deg);
+                    opacity: 1;
+                }
+                30% { 
+                    transform: scale(1.5) rotate(120deg);
+                    opacity: 0.9;
+                }
+                70% { 
+                    transform: scale(1.2) rotate(240deg);
+                    opacity: 0.6;
+                }
+                100% { 
+                    transform: scale(0.2) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+            @keyframes warning-fade {
+                0% { 
+                    transform: translate(-50%, -50%) scale(0.8);
+                    opacity: 0;
+                }
+                20% { 
+                    transform: translate(-50%, -50%) scale(1.2);
+                    opacity: 1;
+                }
+                80% { 
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 1;
+                }
+                100% { 
+                    transform: translate(-50%, -50%) scale(0.6);
+                    opacity: 0;
+                }
+            }
+            @keyframes instruction-fade {
+                0% { 
+                    transform: translate(-50%, -50%) scale(0.5);
+                    opacity: 0;
+                }
+                15% { 
+                    transform: translate(-50%, -50%) scale(1.3);
+                    opacity: 1;
+                }
+                85% { 
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 1;
+                }
+                100% { 
+                    transform: translate(-50%, -50%) scale(0.7);
+                    opacity: 0;
+                }
+            }
+            @keyframes failure-appear {
+                0% { 
+                    transform: scale(0.3);
+                    opacity: 0;
+                }
+                50% { 
+                    transform: scale(1.1);
+                    opacity: 0.9;
+                }
+                100% { 
+                    transform: scale(1);
+                    opacity: 1;
+                }
+            }
+            @keyframes sad-fox-fall {
+                0% { 
+                    transform: translateY(-50px) rotate(0deg);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: translateY(50vh) rotate(180deg);
+                    opacity: 0.8;
+                }
+                100% { 
+                    transform: translateY(100vh) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Função para iniciar o jogo
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'flex';
+            document.body.style.cursor = 'none';
+            gameLoop();
+        }
+        
+        // Criar corações flutuantes na tela inicial
+        function createFloatingHearts() {
+            const heartsContainer = document.getElementById('floatingHearts');
+            const heartEmojis = ['💜', '💖', '💕', '💗', '💝'];
+            
+            setInterval(() => {
+                const heart = document.createElement('div');
+                heart.className = 'floating-heart';
+                heart.innerHTML = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+                heart.style.left = Math.random() * 100 + '%';
+                heart.style.animationDelay = Math.random() * 2 + 's';
+                heart.style.animationDuration = (Math.random() * 4 + 6) + 's';
+                
+                heartsContainer.appendChild(heart);
+                
+                setTimeout(() => {
+                    heart.remove();
+                }, 10000);
+            }, 800);
+        }
+        
+        // Função para spawnar raposas atacando após rejeição
+        function spawnAttackingFoxes() {
+            // Adicionar muitas raposas fofas ao mapa
+            const newFoxes = [
+                { x: 200, y: 200, type: 'enemy', active: true, speed: 1.5, chaseMode: true, health: 1, 
+                  originalX: 200, originalY: 200, patrolRadius: 30, alertDistance: 200, attackDistance: 40 },
+                { x: 800, y: 200, type: 'enemy', active: true, speed: 1.3, chaseMode: true, health: 1,
+                  originalX: 800, originalY: 200, patrolRadius: 25, alertDistance: 200, attackDistance: 40 },
+                { x: 200, y: 500, type: 'enemy', active: true, speed: 1.7, chaseMode: true, health: 1,
+                  originalX: 200, originalY: 500, patrolRadius: 35, alertDistance: 200, attackDistance: 40 },
+                { x: 800, y: 500, type: 'enemy', active: true, speed: 1.4, chaseMode: true, health: 1,
+                  originalX: 800, originalY: 500, patrolRadius: 20, alertDistance: 200, attackDistance: 40 },
+                { x: 500, y: 300, type: 'enemy', active: true, speed: 1.6, chaseMode: true, health: 1,
+                  originalX: 500, originalY: 300, patrolRadius: 40, alertDistance: 200, attackDistance: 40 },
+                { x: 300, y: 400, type: 'enemy', active: true, speed: 1.8, chaseMode: true, health: 1,
+                  originalX: 300, originalY: 400, patrolRadius: 30, alertDistance: 200, attackDistance: 40 },
+                { x: 700, y: 350, type: 'enemy', active: true, speed: 1.2, chaseMode: true, health: 1,
+                  originalX: 700, originalY: 350, patrolRadius: 25, alertDistance: 200, attackDistance: 40 }
+            ];
+            
+            // Adicionar as novas raposas ao array de sprites
+            sprites.push(...newFoxes);
+            
+            // Criar efeito visual de invasão de raposas
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    createSadFoxParticle();
+                }, i * 200);
+            }
+        }
+        
+        function createSadFoxParticle() {
+            const foxParticle = document.createElement('div');
+            foxParticle.innerHTML = '🦊💔';
+            foxParticle.style.position = 'fixed';
+            foxParticle.style.left = Math.random() * window.innerWidth + 'px';
+            foxParticle.style.top = '-50px';
+            foxParticle.style.fontSize = (Math.random() * 20 + 25) + 'px';
+            foxParticle.style.pointerEvents = 'none';
+            foxParticle.style.zIndex = '1999';
+            foxParticle.style.animation = 'sad-fox-fall 3s ease-in forwards';
+            
+            document.body.appendChild(foxParticle);
+            
+            setTimeout(() => {
+                foxParticle.remove();
+            }, 3000);
+        }
+
+        // Inicializar corações flutuantes
+        createFloatingHearts();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'967138789741f254',t:'MTc1Mzg0MDM4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
